@@ -41,9 +41,9 @@ const upload = multer({storage: storage});
 app.use('/images', express.static('upload/images'));
 app.post("/upload", upload.single('product'), (request,response) => {
     response.json({
-        sussess:1,
-        image_url:`http://localhost:${port}/images/${request.file.filename}`
-    })
+        success: 1,
+        image_url: `http://localhost:${port}/images/${request.file.filename}`,
+    });
 });
 
 //Data Schema for Products
@@ -83,7 +83,7 @@ const Product = mongoose.model("Product",{
     available: {
         type: Boolean,
         default: true
-    }
+    },
 });
 
 app.post('/addproduct', async (request, response)=> {
@@ -103,7 +103,7 @@ app.post('/addproduct', async (request, response)=> {
         category: request.body.category,
         new_price: request.body.new_price,
         old_price: request.body.old_price,
-        description: request.body.old_price
+        description: request.body.description,
     });
     console.log(product);
     await product.save();

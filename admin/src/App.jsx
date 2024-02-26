@@ -1,6 +1,6 @@
 import React from 'react'
 import Navbar from './Components/NavBar/Navbar'
-import Admin from './Components/Pages/Admin/Admin'
+import Admin from './Pages/Admin/Admin'
 
 const App = () => {
   return (
