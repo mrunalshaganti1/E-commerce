@@ -86,6 +86,141 @@ const Product = mongoose.model("Product",{
     },
 });
 
+// Schema creating for User model
+
+const Users = mongoose.model('Users', {
+    name:{
+        type:String,
+    },
+    email:{
+        type:String,
+        unique:true,
+    },
+    password:{
+        type:String,
+    },
+    cartData:{
+        type:Object,
+    },
+    date:{
+        type:Date,
+        default:Date.now,
+    }
+});
+
+// Creating Endpoint for user registration
+app.post('/signup', async (request, response) => {
+    let check = await Users.findOne({email:request.body.email});
+    if(check){
+        return response.status(400).json({success: false, error:"Existing user found with this email"})
+    }
+    let cart = {};
+    for (let i = 0; i < 300; i++) {
+        cart[i] = 0;
+    }
+    const user = new Users({
+        name:request.body.username,
+        email:request.body.email,
+        password:request.body.password,
+        cartData:cart,
+    });
+
+    await user.save();
+
+    const data = {
+        user:{
+            id:user.id
+        }
+    }
+
+    const token = jwt.sign(data, 'secret_ecom');
+    response.json({success:true, token});
+});
+
+// Creating Endpoint for Login
+app.post('/login', async (request, response) => {
+    let user = await Users.findOne({email: request.body.email});
+    if(user){
+        const passCompare = request.body.password === user.password;
+        if (passCompare) {
+            const data = {
+                user:{
+                    id:user.id
+                }
+            }
+            const token = jwt.sign(data,'secret_ecom');
+            response.json({success:true, token});
+        }else{
+            response.json({success:false, error: "Entered Password is Wrong.!!!"});
+        }
+    }else{
+        response.json({success:false, error:"User does not exists.!!!"})
+    }
+})
+
+// Creating Endpoint for cart
+app.get('/newcollections', async (request, response) =>{
+    let products = await Product.find({});
+    let newCollection = products.slice(1).slice(-8);
+
+    console.log("New Collection Fetched");
+    response.send(newCollection);
+})
+
+// Creating Endpoint for popular in women section
+app.get('/popularInWomen',async (request,response) => {
+    let products = await Product.find({category: "women"})
+
+    let popular_in_women = products.slice(0,4);
+
+    console.log("Popular in Women fetch");
+    response.send(popular_in_women);
+})
+
+// Creating Middleware to fetch user
+const fetchUser = async (request, response, next) => {
+    const token = request.header('auth-token');
+    if (!token) {
+        response.status(401).send({errors: "Please authenticate using valid token"});
+    }else{
+        try {
+            const data = jwt.verify(token,'secret_ecom');
+            request.user = data.user;
+            next();
+        } catch (error) {
+            response.status(401).send({errors:"Please authenticate using a valid token"});
+        }
+    }
+}
+
+// Creating endpoint for adding products in cart data
+app.post('/addtocart',fetchUser, async (request,response) => {
+    console.log("Added", request.body.itemId);
+
+    let userData = await Users.findOne({_id: request.user.id});
+    userData.cartData[request.body.itemId] += 1;
+    await Users.findOneAndUpdate({_id: request.user.id}, {cartData:userData.cartData});
+    response.send("Added")
+})
+
+// Creating Endpoint to remove product from cart
+app.post('/removefromcart', fetchUser, async (request,response) => {
+    console.log("Removed", request.body.itemId);
+    let userData = await Users.findOne({_id: request.user.id});
+    if(userData.cartData[request.body.itemId] > 0)
+    userData.cartData[request.body.itemId] -= 1;
+    await Users.findOneAndUpdate({_id: request.user.id}, {cartData:userData.cartData});
+    response.send("Removed")
+})
+
+
+// Creating Endpoint to get cart
+app.post('/getcart', fetchUser, async (request, response) =>{
+    console.log("Get Cart");
+    let userData = await Users.findOne({_id:request.user.id});
+    response.json(userData.cartData);
+})
+
 app.post('/addproduct', async (request, response)=> {
     let products = await Product.find({});
     let id;
